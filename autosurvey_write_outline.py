@@ -57,6 +57,7 @@ def write_outline(topic, model, section_num, outline_reference_num, db, api_key=
             {"role": "user", "content": 'What is the capital of Vietnam?'}
         ]
     ) 
+    print(response['message']['content'])  # Debug line to confirm LLM is responsive
     return outline, remove_descriptions(outline)  # Return outline with and without descriptions
  
 
