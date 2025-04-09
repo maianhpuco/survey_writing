@@ -26,7 +26,7 @@ class WritingOutlineFlow(Flow[WritingState]):
     @listen("get_topic")
     def planner_phase(self, state: WritingState) -> WritingState:
         print(f"\nPlanner Agent: Generating structured writing strategy (Round {state.planner_rounds + 1})...\n")
-        llm = LLM(model="ollama/llama3")
+        llm = LLM(model="ollama/qwq")
         planner = Agent(
             role="Planner",
             goal="Analyze the writing task, generate a problem definition, design plan, and list resources.",
@@ -138,7 +138,7 @@ class WritingOutlineFlow(Flow[WritingState]):
     @listen("planner_phase")
     def evaluator_phase(self, state: WritingState) -> WritingState:
         print("\nEvaluator Agent: Assessing the plan...\n")
-        llm = LLM(model="ollama/llama3")
+        llm = LLM(model="ollama/qwq")
         evaluator = Agent(
             role="Evaluator",
             goal="Evaluate the plan against success criteria",
