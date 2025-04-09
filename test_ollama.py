@@ -4,7 +4,7 @@ import ollama
 model_name = 'qwq'  # or 'mistral', 'llama3', etc., depending on what you installed
 
 # Create a simple prompt
-prompt = "What is the capital of France?"
+prompt = "What is the capital of Vietnam?"
 
 # Send the prompt to the model
 response = ollama.chat(
