@@ -38,6 +38,12 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
     Refine the merged outline.
     Save the final result to a JSON file. 
     
+    
+    -> 2 important components: 
+    1. Revise (self - reflect)
+    2. Ensemble (from initial version to multiple version)
+    3. Few show learning 
+    
     '''
     def __init__(self):
         super().__init__(initial_state=SurveyState())
