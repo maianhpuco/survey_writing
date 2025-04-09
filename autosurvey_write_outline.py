@@ -87,6 +87,8 @@ def main(args):
             args.api_key, 
             args.api_url
             )
+    print("Outline with description:", outline_with_description)  # Debug line to confirm outline generation 
+    print("Outline without description:", outline_wo_description)  # Debug line to confirm outline generation 
 
     # # Write survey subsections (with or without refinement)
     # (
