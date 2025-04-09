@@ -1,6 +1,16 @@
 from crewai import BaseState
 from typing import List
 
+import os
+import json
+import re
+from crewai import Agent, Task, Crew, Flow, start, listen
+from your_module.database import database
+from your_module.utils import tokenCounter
+from your_module.prompts import ROUGH_OUTLINE_PROMPT, MERGING_OUTLINE_PROMPT, SUBSECTION_OUTLINE_PROMPT, EDIT_FINAL_OUTLINE_PROMPT
+import ollama 
+
+
 class SurveyState(BaseState):
     topic: str = ""
     titles: List[str] = []
@@ -12,14 +22,7 @@ class SurveyState(BaseState):
     subsection_outlines: List[str] = []
     final_outline: str = ""
 
-import os
-import json
-import re
-from crewai import Agent, Task, Crew, Flow, start, listen
-from your_module.database import database
-from your_module.utils import tokenCounter
-from your_module.prompts import ROUGH_OUTLINE_PROMPT, MERGING_OUTLINE_PROMPT, SUBSECTION_OUTLINE_PROMPT, EDIT_FINAL_OUTLINE_PROMPT
-import ollama
+
 
 class WriteSurveyOutlineFlow(Flow[SurveyState]):
 
