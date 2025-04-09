@@ -39,7 +39,11 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
     @listen("get_topic")
     def retrieve_references(self, state: SurveyState) -> SurveyState:
         print("\n📚 Retrieving papers from database...\n")
-        db = database()
+        db = database(
+            db_path = "/project/hnguyen2/mvu9/datasets/llms/auto_survey/database", 
+            embedding_model = "nomic-ai/nomic-embed-text-v1"
+        )  # Initialize the retrieval DB
+    
         refs = db.get_paper_info_from_ids(db.get_ids_from_query(state.topic, num=500))
         state.abstracts = [r['abs'] for r in refs]
         state.titles = [r['title'] for r in refs]
