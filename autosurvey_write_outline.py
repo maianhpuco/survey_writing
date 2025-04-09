@@ -9,8 +9,6 @@ from tqdm import tqdm                                # Progress bar (not used in
 import time                                          # Time utility (not used here directly)
 import yaml 
 
-
-    
 # Removes lines that begin with "Description" from the outline text
 def remove_descriptions(text):
     lines = text.split('\n')
