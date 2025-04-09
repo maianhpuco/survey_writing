@@ -6,17 +6,30 @@ from crewai import LLM, Agent, Task, Crew
 from crewai.flow.flow import Flow, listen, start
 from src.database import database  # Assuming this is your database module
 
-# Placeholder for tokenCounter and ROUGH_OUTLINE_PROMPT
-class tokenCounter:
-    def num_tokens_from_string(self, text): return len(text.split())  # Simplified
-    def num_tokens_from_list_string(self, texts): return sum(len(t.split()) for t in texts)
+FIRST_PLANNER_PROMPT = f"""
+            You are tasked with planning a writing task based on the following topic and resources:
 
-ROUGH_OUTLINE_PROMPT = """
-Generate a rough outline for a survey paper on [TOPIC] based on the following papers:
-[PAPER LIST]
-The outline should have [SECTION NUM] sections. Return the outline as a string.
-"""
+            [TOPIC]: {state.topic}
+            [TASK]: {state.task}
+            [SAMPLE REFERENCES FROM CHUNKS]:
+            {sample_chunk_refs}
 
+            Define the following in JSON format:
+            {{
+                "Problem Statement": "Describe the task they are required to solve based on the topic '{state.topic}' and task '{state.task}'",
+                "Goals": "Based on the topic '{state.topic}' and task '{state.task}', decide the desirable goals",
+                "Resources": "List of resources including the chunked references from state.abs_chunks and state.title_chunks",
+                "Initial Result": "Based on the goals and resources, decide the initial result for the survey paper outline",
+                "Success Metric": "Define how success will be measured for this task: '{state.task}'"
+            }}
+            Ensure the output is a valid JSON string enclosed in ```json ... ``` markers.
+            """ 
+
+NEXT_PLANNER_PROMPT = f""" 
+""" 
+
+EXECUTOR_PROMPT = f"""
+""" 
 class WritingState(BaseModel):
     topic: str = ""
     abstracts: list = []  # Store paper abstracts
@@ -98,24 +111,7 @@ class WritingOutlineFlow(Flow[WritingState]):
         ) if state.abs_chunks and state.title_chunks else "No chunked references available."
 
         if state.planner_rounds == 0:
-            plan_prompt = f"""
-            You are tasked with planning a writing task based on the following topic and resources:
-
-            [TOPIC]: {state.topic}
-            [TASK]: {state.task}
-            [SAMPLE REFERENCES FROM CHUNKS]:
-            {sample_chunk_refs}
-
-            Define the following in JSON format:
-            {{
-                "Problem Statement": "Describe the task they are required to solve based on the topic '{state.topic}' and task '{state.task}'",
-                "Goals": "Based on the topic '{state.topic}' and task '{state.task}', decide the desirable goals",
-                "Resources": "List of resources including the chunked references from state.abs_chunks and state.title_chunks",
-                "Initial Result": "Based on the goals and resources, decide the initial result for the survey paper outline",
-                "Success Metric": "Define how success will be measured for this task: '{state.task}'"
-            }}
-            Ensure the output is a valid JSON string enclosed in ```json ... ``` markers.
-            """
+            plan_prompt = FIRST_PLANNER_PROMPT
         else:
             plan_prompt = f"""
             Revise your previous plan based on this evaluation feedback:
