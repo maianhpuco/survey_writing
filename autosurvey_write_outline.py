@@ -8,6 +8,7 @@ from src.database import database                    # Handles retrieval and emb
 from tqdm import tqdm                                # Progress bar (not used in this script but imported)
 import time                                          # Time utility (not used here directly)
 import yaml 
+import ollama 
 
 # Removes lines that begin with "Description" from the outline text
 def remove_descriptions(text):
@@ -17,24 +18,47 @@ def remove_descriptions(text):
     return result
 
 # Generates an outline using the outlineWriter agent
-def write_outline(topic, model, section_num, outline_reference_num, db, api_key, api_url):
+# def write_outline(topic, model, section_num, outline_reference_num, db, api_key, api_url):
     
+#     outline_writer = outlineWriter(
+#         # model=model,
+#         ollama_model=model, 
+#         # # api_key=api_key, 
+#         # api_url = api_url, 
+#         database=db)
+    
+#     # print(outline_writer.api_model.chat('hello'))  # Debug/test line to confirm LLM is responsive
+    
+#     outline = outline_writer.draft_outline(
+#         topic, outline_reference_num, 30000, section_num)  # Generate outline with references
+    
+#     return outline, remove_descriptions(outline)  # Return outline with and without descriptions
+
+
+# Generates an outline using the outlineWriter agent (Ollama-only version)
+def write_outline(topic, model, section_num, outline_reference_num, db, api_key=None, api_url=None):
+    # Initialize the outline writer with local Ollama model
     outline_writer = outlineWriter(
-        # model=model,
-        ollama_model=model, 
-        # # api_key=api_key, 
-        # api_url = api_url, 
-        database=db)
-    
-    # print(outline_writer.api_model.chat('hello'))  # Debug/test line to confirm LLM is responsive
-    
+        ollama_model=model,
+        database=db
+    )
+
+    # Generate outline with references
     outline = outline_writer.draft_outline(
-        topic, outline_reference_num, 30000, section_num)  # Generate outline with references
-    
+        topic=topic,
+        reference_num=outline_reference_num,
+        chunk_size=30000,
+        section_num=section_num
+    )
+    # Send the prompt to the model
+    response = ollama.chat(
+        model=model,
+        messages=[
+            {"role": "user", "content": 'What is the capital of Vietnam?'}
+        ]
+    ) 
     return outline, remove_descriptions(outline)  # Return outline with and without descriptions
-
-
-
+ 
 
 # Main pipeline logic
 def main(args):
