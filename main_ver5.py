@@ -5,29 +5,22 @@ from pydantic import BaseModel
 from crewai import LLM, Agent, Task, Crew
 from crewai.flow.flow import Flow, listen, start
 from src.database import database  # Assuming this is your database module
+from src.utils import tokenCounter  # Assuming this is your utility module 
 
-FIRST_PLANNER_PROMPT = f"""
 
-
-""" 
-
-NEXT_PLANNER_PROMPT = f""" 
-""" 
-
-EXECUTOR_PROMPT = f"""
-""" 
 class WritingState(BaseModel):
     topic: str = ""
-    abstracts: list = []  # Store paper abstracts
-    titles: list = []  # Store paper titles
-    abs_chunks: list = []  # Store chunked abstracts
-    title_chunks: list = []  # Store chunked titles
-    rough_outlines: list = []  # Store rough outlines from chunks
-    polished_plan: str = ""  # Final JSON string after Executor revisions
-    plan_iterations: list = []  # Store intermediate plans from Executor
-    evaluation_result: dict = {}  # Store evaluation output
-    planner_rounds: int = 0  # Track number of Planner-Evaluator loops
-
+    task: str = ""  # 👈 Add this line
+    abstracts: list = []
+    titles: list = []
+    abs_chunks: list = []
+    title_chunks: list = []
+    rough_outlines: list = []
+    polished_plan: str = ""
+    plan_iterations: list = []
+    evaluation_result: dict = {}
+    planner_rounds: int = 0
+ 
 class WritingOutlineFlow(Flow[WritingState]):
     def __init__(self):
         super().__init__(initial_state=WritingState())
@@ -91,11 +84,17 @@ class WritingOutlineFlow(Flow[WritingState]):
             verbose=True
         )
 
-        # Use a sample of chunked references (e.g., first chunk) for the initial plan
-        sample_chunk_refs = "\n".join(
-            [f"Title: {t}\nAbstract: {a}" for t, a in zip(state.title_chunks[0][:3], state.abs_chunks[0][:3])]
-        ) if state.abs_chunks and state.title_chunks else "No chunked references available."
-
+        # # Use a sample of chunked references (e.g., first chunk) for the initial plan
+        # sample_chunk_refs = "\n".join(
+        #     [f"Title: {t}\nAbstract: {a}" for t, a in zip(state.title_chunks[0][:3], state.abs_chunks[0][:3])]
+        # ) if state.abs_chunks and state.title_chunks else "No chunked references available."
+        if state.abs_chunks and state.title_chunks and state.abs_chunks[0] and state.title_chunks[0]:
+            sample_chunk_refs = "\n".join([
+                f"Title: {t}\nAbstract: {a}" for t, a in zip(state.title_chunks[0][:3], state.abs_chunks[0][:3])
+            ])
+        else:
+            sample_chunk_refs = "No chunked references available." 
+            
         if state.planner_rounds == 0:
             plan_prompt = f"""
             You are a PhD student you are require to do the task bellow.
@@ -366,10 +365,16 @@ class WritingOutlineFlow(Flow[WritingState]):
 
         # Prepare plan_iterations, handling potential invalid JSON
         try:
-            plan_iterations_list = [
-                json.loads(itr) if itr.startswith("{") else itr 
-                for itr in state.plan_iterations
-            ]
+            plan_iterations_list = []
+            for itr in state.plan_iterations:
+                try:
+                    plan_iterations_list.append(json.loads(itr))
+                except Exception:
+                    plan_iterations_list.append({"error": "Invalid JSON", "raw": itr}) 
+            # plan_iterations_list = [
+            #     json.loads(itr) if itr.startswith("{") else itr 
+            #     for itr in state.plan_iterations
+            # ]
         except json.JSONDecodeError:
             plan_iterations_list = [
                 {"error": "Invalid JSON in iteration", "raw": itr} 
