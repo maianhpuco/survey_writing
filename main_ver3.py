@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import json
+import os
 from pydantic import BaseModel
 from crewai import LLM, Agent, Task, Crew
 from crewai.flow.flow import Flow, listen, start
@@ -122,6 +123,25 @@ class WritingOutlineFlow(Flow[WritingState]):
         state.polished_plan = result.tasks_output[0].raw
         state.plan_iterations = iterations  # Store all intermediate plans
         return state
+
+    @listen("planner_phase")
+    def save_output(self, state: WritingState) -> str:
+        print("\n💾 Saving planning results to output/writing_plan.json\n")
+        os.makedirs("output", exist_ok=True)
+        output_file = "output/writing_plan_ver3.json"
+        
+        # Prepare the data to save
+        output_data = {
+            "topic": state.topic,
+            "polished_plan": json.loads(state.polished_plan),  # Convert JSON string to dict for readability
+            "plan_iterations": [json.loads(itr) for itr in state.plan_iterations]  # Convert each iteration to dict
+        }
+        
+        # Write to file
+        with open(output_file, "w") as f:
+            json.dump(output_data, f, indent=2)
+        
+        return "Done"
 
 def kickoff():
     flow = WritingOutlineFlow()

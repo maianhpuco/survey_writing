@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import json
-import os 
+import os
 from pydantic import BaseModel
 from crewai import LLM, Agent, Task, Crew
 from crewai.flow.flow import Flow, listen, start
@@ -52,10 +52,9 @@ class WritingOutlineFlow(Flow[WritingState]):
                 "Success Metric": "Define how success will be measured"
             }}
 
-            Revise your plan 3 times internally and return a polished JSON plan.
+            Revise your plan 3 times internally and return a polished JSON plan. Ensure the output is a valid JSON string enclosed in ```json ... ``` markers.
             """
         else:
-            # Use feedback from Evaluator
             plan_prompt = f"""
             Revise your previous plan based on this evaluation feedback:
 
@@ -73,6 +72,7 @@ class WritingOutlineFlow(Flow[WritingState]):
                 "Rough Plan": "...",
                 "Success Metric": "..."
             }}
+            Ensure the output is a valid JSON string enclosed in ```json ... ``` markers.
             """
 
         # Internal 3-iteration refinement loop
@@ -87,12 +87,20 @@ class WritingOutlineFlow(Flow[WritingState]):
             )
             crew = Crew(agents=[planner], tasks=[task], verbose=True)
             result = crew.kickoff()
-            iterations.append(result.tasks_output[0].raw)
-            # Update prompt for next iteration to refine the previous output
+            raw_output = result.tasks_output[0].raw.strip()
+            # Extract JSON if enclosed in markers
+            if raw_output.startswith("```json") and raw_output.endswith("```"):
+                raw_output = raw_output[7:-3].strip()
+            try:
+                json.loads(raw_output)  # Validate JSON
+                iterations.append(raw_output)
+            except json.JSONDecodeError as e:
+                print(f"Warning: Invalid JSON in iteration {i}: {raw_output}")
+                iterations.append('{"error": "Invalid JSON output from LLM"}')
             current_prompt = f"""
             Refine this plan further:
             {iterations[-1]}
-            Return the improved plan in JSON format.
+            Return the improved plan in JSON format enclosed in ```json ... ``` markers.
             """
 
         # Final polish of internal iterations
@@ -101,7 +109,7 @@ class WritingOutlineFlow(Flow[WritingState]):
         Iteration 1: {iterations[0]}
         Iteration 2: {iterations[1]}
         Iteration 3: {iterations[2]}
-        Return the final plan in JSON format.
+        Return the final plan in JSON format enclosed in ```json ... ``` markers.
         """
         task = Task(
             description=final_prompt,
@@ -111,9 +119,19 @@ class WritingOutlineFlow(Flow[WritingState]):
         )
         crew = Crew(agents=[planner], tasks=[task], verbose=True)
         result = crew.kickoff()
+        raw_final = result.tasks_output[0].raw.strip()
+        if raw_final.startswith("```json") and raw_final.endswith("```"):
+            raw_final = raw_final[7:-3].strip()
 
-        state.polished_plan = result.tasks_output[0].raw
-        state.plan_iterations.extend(iterations)  # Append to track all iterations
+        # Validate and store final plan
+        try:
+            json.loads(raw_final)
+            state.polished_plan = raw_final
+        except json.JSONDecodeError as e:
+            print(f"Error: Final plan is not valid JSON: {raw_final}")
+            state.polished_plan = '{"error": "Failed to generate valid JSON plan"}'
+
+        state.plan_iterations.extend(iterations)
         state.planner_rounds += 1
         return state
 
@@ -146,6 +164,7 @@ class WritingOutlineFlow(Flow[WritingState]):
             "score": number (0-100),
             "recommendations": "suggestions for improvement"
         }}
+        Ensure the output is a valid JSON string enclosed in ```json ... ``` markers.
         """
         task = Task(
             description=eval_prompt,
@@ -155,13 +174,20 @@ class WritingOutlineFlow(Flow[WritingState]):
         )
         crew = Crew(agents=[evaluator], tasks=[task], verbose=True)
         result = crew.kickoff()
-        state.evaluation_result = json.loads(result.tasks_output[0].raw)
+        raw_eval = result.tasks_output[0].raw.strip()
+        if raw_eval.startswith("```json") and raw_eval.endswith("```"):
+            raw_eval = raw_eval[7:-3].strip()
 
-        # Check if plan passes (e.g., score >= 90) or max rounds reached
+        try:
+            state.evaluation_result = json.loads(raw_eval)
+        except json.JSONDecodeError as e:
+            print(f"Error: Evaluation result is not valid JSON: {raw_eval}")
+            state.evaluation_result = {"error": "Invalid JSON from Evaluator", "score": 0}
+
         score = state.evaluation_result.get("score", 0)
         if score < 90 and state.planner_rounds < self.max_planner_rounds:
             print(f"\nEvaluation score {score} < 90. Returning to Planner...\n")
-            return self.planner_phase(state)  # Loop back to Planner
+            return self.planner_phase(state)
         else:
             print(f"\nEvaluation complete. Score: {score}. Proceeding...\n")
             return state
@@ -170,14 +196,29 @@ class WritingOutlineFlow(Flow[WritingState]):
     def save_output(self, state: WritingState) -> str:
         print("\n💾 Saving final plan and evaluation to output/writing_plan.json\n")
         os.makedirs("output", exist_ok=True)
-        with open("output/writing_plan.json", "w") as f:
-            json.dump({
-                "topic": state.topic,
-                "polished_plan": json.loads(state.polished_plan),  # Convert string to dict
-                "evaluation_result": state.evaluation_result,
-                "planner_rounds": state.planner_rounds,
-                "plan_iterations": [json.loads(itr) for itr in state.plan_iterations]  # Convert strings to dicts
-            }, f, indent=2)
+        output_file = "output/writing_plan.json"
+
+        # Prepare data, handling potential invalid JSON
+        try:
+            polished_plan_dict = json.loads(state.polished_plan)
+        except json.JSONDecodeError:
+            polished_plan_dict = {"error": "Invalid JSON in polished_plan", "raw": state.polished_plan}
+
+        try:
+            iterations_list = [json.loads(itr) for itr in state.plan_iterations]
+        except json.JSONDecodeError:
+            iterations_list = [{"error": "Invalid JSON", "raw": itr} for itr in state.plan_iterations]
+
+        output_data = {
+            "topic": state.topic,
+            "polished_plan": polished_plan_dict,
+            "evaluation_result": state.evaluation_result,
+            "planner_rounds": state.planner_rounds,
+            "plan_iterations": iterations_list
+        }
+
+        with open(output_file, "w") as f:
+            json.dump(output_data, f, indent=2)
         return "Done"
 
 def kickoff():
