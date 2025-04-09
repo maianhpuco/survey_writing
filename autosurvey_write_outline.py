@@ -42,7 +42,15 @@ def write_outline(topic, model, section_num, outline_reference_num, db, api_key=
         ollama_model=model,
         database=db
     )
-
+        # Send the prompt to the model
+    response = ollama.chat(
+        model=model,
+        messages=[
+            {"role": "user", "content": 'What is the capital of Vietnam?'}
+        ]
+    ) 
+    print(response['message']['content'])  # Debug line to confirm LLM is responsive 
+    
     # Generate outline with references
     outline = outline_writer.draft_outline(
         topic=topic,
@@ -50,14 +58,7 @@ def write_outline(topic, model, section_num, outline_reference_num, db, api_key=
         chunk_size=30000,
         section_num=section_num
     )
-    # Send the prompt to the model
-    response = ollama.chat(
-        model=model,
-        messages=[
-            {"role": "user", "content": 'What is the capital of Vietnam?'}
-        ]
-    ) 
-    print(response['message']['content'])  # Debug line to confirm LLM is responsive
+
     return outline, remove_descriptions(outline)  # Return outline with and without descriptions
  
 
