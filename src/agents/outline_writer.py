@@ -9,14 +9,16 @@ from src.database import database
 from src.utils import tokenCounter
 from src.prompt import ROUGH_OUTLINE_PROMPT, MERGING_OUTLINE_PROMPT, SUBSECTION_OUTLINE_PROMPT, EDIT_FINAL_OUTLINE_PROMPT
 from transformers import AutoModel, AutoTokenizer,  AutoModelForSequenceClassification
+import ollama 
 
 class outlineWriter():
     
     def __init__(self, model:str, api_key:str, api_url:str, database) -> None:
         
         self.model, self.api_key, self.api_url = model, api_key, api_url 
-        self.api_model = APIModel(self.model, self.api_key, self.api_url)
-
+        # self.api_model = APIModel(self.model, self.api_key, self.api_url)
+        self.ollama_model = 'qwq'
+        
         self.db = database
         self.token_counter = tokenCounter()
         self.input_token_usage, self.output_token_usage = 0, 0
