@@ -5,9 +5,13 @@ from tqdm import trange, tqdm
 import time
 import torch
 import ollama
-from src.database import database
-from src.utils import tokenCounter
-from src.prompt import ROUGH_OUTLINE_PROMPT, MERGING_OUTLINE_PROMPT, SUBSECTION_OUTLINE_PROMPT, EDIT_FINAL_OUTLINE_PROMPT
+from autosurvey_src.database import database
+from autosurvey_src.utils import tokenCounter
+from autosurvey_src.prompt import (
+    ROUGH_OUTLINE_PROMPT, 
+    MERGING_OUTLINE_PROMPT, 
+    SUBSECTION_OUTLINE_PROMPT,
+    EDIT_FINAL_OUTLINE_PROMPT) 
 from transformers import AutoModel, AutoTokenizer, AutoModelForSequenceClassification
 
 class outlineWriter():
