@@ -356,7 +356,7 @@ class WritingOutlineFlow(Flow[WritingState]):
     def save_output(self, state: WritingState) -> str:
         print("\n💾 Saving all state outputs and final result to output/writing_outline.json\n")
         os.makedirs("output", exist_ok=True)
-        output_file = "output/writing_outline.json"
+        output_file = "output/writing_outline_ver5.json"
 
         # Prepare polished_plan, handling potential invalid JSON
         try:
