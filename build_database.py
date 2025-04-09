@@ -1,6 +1,6 @@
 import json
 import yaml
-import faiss_search
+import autosurvey_write_outline
 import torch
 import numpy as np
 from tqdm import trange
@@ -22,9 +22,9 @@ def get_embeddings(texts, model, prefix="search_document: ", batch_size=32):
 
 
 def build_and_save_index(embeddings, index_path):
-    index = faiss_search.IndexFlatL2(embeddings.shape[1])
+    index = autosurvey_write_outline.IndexFlatL2(embeddings.shape[1])
     index.add(embeddings)
-    faiss_search.write_index(faiss_search.index_gpu_to_cpu(index), index_path)
+    autosurvey_write_outline.write_index(autosurvey_write_outline.index_gpu_to_cpu(index), index_path)
 
 
 def main():

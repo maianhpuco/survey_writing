@@ -7,7 +7,7 @@ import h5py
 from src.utils import tokenCounter
 import json
 from tqdm import tqdm
-import faiss_search
+import autosurvey_write_outline
 from tinydb import TinyDB, Query
 
 class database():
@@ -23,9 +23,9 @@ class database():
 
         self.User = Query()
         self.token_counter = tokenCounter()
-        self.title_loaded_index = faiss_search.read_index(f'{db_path}/faiss_paper_title_embeddings.bin')
+        self.title_loaded_index = autosurvey_write_outline.read_index(f'{db_path}/faiss_paper_title_embeddings.bin')
 
-        self.abs_loaded_index = faiss_search.read_index(f'{db_path}/faiss_paper_abs_embeddings.bin')
+        self.abs_loaded_index = autosurvey_write_outline.read_index(f'{db_path}/faiss_paper_abs_embeddings.bin')
         self.id_to_index, self.index_to_id = self.load_index_arxivid(db_path)
 
     def load_index_arxivid(self, db_path):
