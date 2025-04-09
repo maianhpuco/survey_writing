@@ -20,12 +20,13 @@ def remove_descriptions(text):
 def write_outline(topic, model, section_num, outline_reference_num, db, api_key, api_url):
     
     outline_writer = outlineWriter(
-        model=model, 
-        api_key=api_key, 
-        api_url = api_url, 
+        # model=model,
+        ollama_model=model, 
+        # # api_key=api_key, 
+        # api_url = api_url, 
         database=db)
     
-    print(outline_writer.api_model.chat('hello'))  # Debug/test line to confirm LLM is responsive
+    # print(outline_writer.api_model.chat('hello'))  # Debug/test line to confirm LLM is responsive
     
     outline = outline_writer.draft_outline(
         topic, outline_reference_num, 30000, section_num)  # Generate outline with references
@@ -99,7 +100,7 @@ def paras_args():
     parser.add_argument('--gpu',default='0', type=str, help='Specify the GPU to use')
     parser.add_argument('--saving_path',default='./output/', type=str, help='Directory to save the output survey')
     # parser.add_argument('--model',default='gpt-4o-2024-05-13', type=str, help='Model to use')
-    parser.add_argument('--model',default='ollama/qwq', type=str, help='Model to use')  
+    parser.add_argument('--ollama_model',default='qwq', type=str, help='Model to use')  
     parser.add_argument('--topic',default='', type=str, help='Topic to generate survey for')
     parser.add_argument('--section_num',default=7, type=int, help='Number of sections in the outline')
     parser.add_argument('--subsection_len',default=700, type=int, help='Length of each subsection')
