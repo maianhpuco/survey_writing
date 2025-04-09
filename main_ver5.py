@@ -345,7 +345,7 @@ class WritingOutlineFlow(Flow[WritingState]):
         score = state.evaluation_result.get("score", 0)
         threshold = 80  # Threshold set to 80%
         if score < threshold and state.planner_rounds < self.max_planner_rounds:
-            print(f"\nEvaluation score {score} < {threshold}. Returning to Planner for round {state.planner_rounds + 2}...\n")
+            print(f"\n---Evaluation score {score} < {threshold}. Returning to Planner for round {state.planner_rounds + 2}...\n")
             state.planner_rounds += 1  # Increment before looping back
             return self.planner_phase(state)
         else:
@@ -383,14 +383,6 @@ class WritingOutlineFlow(Flow[WritingState]):
             "task": state.task,
             "abstracts_sample": state.abstracts[:5],  # Sample of 5 for brevity
             "titles_sample": state.titles[:5],  # Sample of 5 for brevity
-            "abs_chunks": [
-                {"chunk_index": i, "abstracts": chunk[:3]}  # Sample 3 per chunk
-                for i, chunk in enumerate(state.abs_chunks)
-            ],
-            "title_chunks": [
-                {"chunk_index": i, "titles": chunk[:3]}  # Sample 3 per chunk
-                for i, chunk in enumerate(state.title_chunks)
-            ],
             "rough_outlines": state.rough_outlines,  # Empty in this version, included for completeness
             "polished_plan": polished_plan_dict,  # Final result from Executor
             "plan_iterations": plan_iterations_list,  # All 5 Executor iterations plus initial
