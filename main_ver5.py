@@ -7,68 +7,15 @@ from crewai.flow.flow import Flow, listen, start
 from src.database import database  # Assuming this is your database module
 
 FIRST_PLANNER_PROMPT = f"""
-            You are a PhD student in the field of AI and ML.
-            You are tasked with planning a writing task based on the following topic and resources:
 
-            [TOPIC]: {state.topic}
-            [TASK]: {state.task}
-            [SAMPLE REFERENCES FROM CHUNKS]:
-            {sample_chunk_refs}
 
-            Define the following in JSON format:
-            {{
-                "Problem Statement": "Describe the task they are required to solve based on the topic '{state.topic}' and task '{state.task}'",
-                "Goals": "Based on the topic '{state.topic}' and task '{state.task}', decide the desirable goals",
-                "Resources": "List of resources including the chunked references from state.abs_chunks and state.title_chunks",
-                "Initial Result": "Based on the goals and resources, decide the initial result for the survey paper outline",
-                "Success Metric": "Define how success will be measured for this task: '{state.task}'"
-            }}
-            Ensure the output is a valid JSON string enclosed in ```json ... ``` markers.
-            """ 
+""" 
 
-NEXT_PLANNER_PROMPT = f"""
-            Revise your previous plan based on this evaluation feedback:
+NEXT_PLANNER_PROMPT = f""" 
+""" 
 
-            Previous Plan:
-            {state.polished_plan}
-
-            Evaluation Feedback:
-            {json.dumps(state.evaluation_result, indent=2)}
-
-            [TOPIC]: {state.topic}
-            [TASK]: {state.task}
-            [SAMPLE REFERENCES FROM CHUNKS]:
-            {sample_chunk_refs}
-
-            Improve the plan by addressing the feedback. Return a revised plan in JSON format:
-            {{
-                "Problem Statement": "Describe the task they are required to solve based on the topic '{state.topic}' and task '{state.task}'",
-                "Goals": "Based on the topic '{state.topic}' and task '{state.task}', decide the desirable goals",
-                "Resources": "List of resources including the chunked references from state.abs_chunks and state.title_chunks",
-                "Rough Plan": "Based on the goals and resources, decide the revised result for the survey paper outline",
-                "Success Metric": "Define how success will be measured for this task: '{state.task}'"
-            }}
-            Ensure the output is a valid JSON string enclosed in ```json ... ``` markers.
-            """ 
-
-EXECUTOR_REFINE_PROMPT = f"""
-            Improve this survey paper outline based on the previous result, topic, task, and resources:
-
-            Previous Outline:
-            {iterations[-1]}
-
-            Topic: {state.topic}
-            Task: {state.task}
-            Sample References (from chunks):
-            {sample_chunk_refs}
-
-            Execute the task of writing the survey paper outline by refining the previous result. Enhance detail, structure, and relevance to the topic and task. Return the improved outline as a JSON string with an "Outline" key:
-            {{
-                "Outline": "Improved survey paper outline text"
-            }}
-            Ensure the output is enclosed in ```json ... ``` markers.
-            """ 
-            
+EXECUTOR_PROMPT = f"""
+""" 
 class WritingState(BaseModel):
     topic: str = ""
     abstracts: list = []  # Store paper abstracts
@@ -150,9 +97,50 @@ class WritingOutlineFlow(Flow[WritingState]):
         ) if state.abs_chunks and state.title_chunks else "No chunked references available."
 
         if state.planner_rounds == 0:
-            plan_prompt = FIRST_PLANNER_PROMPT
+            plan_prompt = f"""
+            You are a PhD student you are require to do the task bellow.
+            You are tasked with planning a writing task based on the following topic and resources:
+
+            [TOPIC]: {state.topic}
+            [TASK]: {state.task}
+            [SAMPLE REFERENCES FROM CHUNKS]:
+            {sample_chunk_refs}
+
+            Define the following in JSON format:
+            {{
+                "Problem Statement": "Describe the task they are required to solve based on the topic '{state.topic}' and task '{state.task}'",
+                "Goals": "Based on the topic '{state.topic}' and task '{state.task}', decide the desirable goals",
+                "Resources": "List of resources including the chunked references from state.abs_chunks and state.title_chunks",
+                "Initial Result": "Based on the goals and resources, decide the initial result for the survey paper outline",
+                "Success Metric": "Define how success will be measured for this task: '{state.task}'"
+            }}
+            Ensure the output is a valid JSON string enclosed in ```json ... ``` markers.
+            """
         else:
-            plan_prompt = NEXT_PLANNER_PROMPT
+            plan_prompt = f"""
+            Revise your previous plan based on this evaluation feedback:
+
+            Previous Plan:
+            {state.polished_plan}
+
+            Evaluation Feedback:
+            {json.dumps(state.evaluation_result, indent=2)}
+
+            [TOPIC]: {state.topic}
+            [TASK]: {state.task}
+            [SAMPLE REFERENCES FROM CHUNKS]:
+            {sample_chunk_refs}
+
+            Improve the plan by addressing the feedback. Return a revised plan in JSON format:
+            {{
+                "Problem Statement": "Describe the task they are required to solve based on the topic '{state.topic}' and task '{state.task}'",
+                "Goals": "Based on the topic '{state.topic}' and task '{state.task}', decide the desirable goals",
+                "Resources": "List of resources including the chunked references from state.abs_chunks and state.title_chunks",
+                "Rough Plan": "Based on the goals and resources, decide the revised result for the survey paper outline",
+                "Success Metric": "Define how success will be measured for this task: '{state.task}'"
+            }}
+            Ensure the output is a valid JSON string enclosed in ```json ... ``` markers.
+            """
 
         task = Task(
             description=plan_prompt,
@@ -198,7 +186,23 @@ class WritingOutlineFlow(Flow[WritingState]):
 
         # 5-round execution and refinement loop
         for i in range(5):
-            refine_prompt = EXECUTOR_REFINE_PROMPT
+            refine_prompt = f"""
+            Improve this survey paper outline based on the previous result, topic, task, and resources:
+
+            Previous Outline:
+            {iterations[-1]}
+
+            Topic: {state.topic}
+            Task: {state.task}
+            Sample References (from chunks):
+            {sample_chunk_refs}
+
+            Execute the task of writing the survey paper outline by refining the previous result. Enhance detail, structure, and relevance to the topic and task. Return the improved outline as a JSON string with an "Outline" key:
+            {{
+                "Outline": "Improved survey paper outline text"
+            }}
+            Ensure the output is enclosed in ```json ... ``` markers.
+            """
             task = Task(
                 description=refine_prompt,
                 agent=executor,
