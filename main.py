@@ -1,14 +1,20 @@
 #!/usr/bin/env python
 import json
-import os 
-import re 
+import os
+from typing import List
 from pydantic import BaseModel
 from crewai import LLM, Agent, Task, Crew
-from crewai.flow import Flow, start, listen
- 
+from crewai.flow.flow import Flow, listen, start
+
+# Assuming these are your custom modules
 from src.database import database
 from src.utils import tokenCounter
-from src.prompt import ROUGH_OUTLINE_PROMPT, MERGING_OUTLINE_PROMPT, SUBSECTION_OUTLINE_PROMPT, EDIT_FINAL_OUTLINE_PROMPT
+from src.prompt import (
+    ROUGH_OUTLINE_PROMPT,
+    MERGING_OUTLINE_PROMPT,
+    SUBSECTION_OUTLINE_PROMPT,
+    EDIT_FINAL_OUTLINE_PROMPT
+)
 
 class SurveyState(BaseModel):
     topic: str = ""
@@ -22,15 +28,17 @@ class SurveyState(BaseModel):
     final_outline: str = ""
 
 class WriteSurveyOutlineFlow(Flow[SurveyState]):
+    def __init__(self):
+        super().__init__(initial_state=SurveyState())
 
     @start()
-    def get_topic(self):
+    def get_topic(self) -> SurveyState:
         print("\n=== Survey Outline Generation Flow ===\n")
         self.state.topic = input("Enter your research topic: ").strip()
         return self.state
 
-    @listen(get_topic)
-    def retrieve_references(self, state):
+    @listen("get_topic")
+    def retrieve_references(self, state: SurveyState) -> SurveyState:
         print("\n📚 Retrieving papers from database...\n")
         db = database()
         refs = db.get_paper_info_from_ids(db.get_ids_from_query(state.topic, num=500))
@@ -38,8 +46,8 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
         state.titles = [r['title'] for r in refs]
         return state
 
-    @listen(retrieve_references)
-    def chunk_references(self, state):
+    @listen("retrieve_references")
+    def chunk_references(self, state: SurveyState) -> SurveyState:
         print("\n🔗 Chunking references...\n")
         token_counter = tokenCounter()
         total_length = token_counter.num_tokens_from_list_string(state.abstracts)
@@ -47,7 +55,8 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
         num_chunks = int(total_length / chunk_size) + 1
         avg_len = int(total_length / num_chunks) + 1
 
-        abs_chunks, title_chunks, l, start = [], [], 0, 0
+        abs_chunks, title_chunks = [], []
+        l, start = 0, 0
         for i in range(len(state.abstracts)):
             l += token_counter.num_tokens_from_string(state.abstracts[i])
             if l > avg_len:
@@ -62,8 +71,8 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
         state.title_chunks = title_chunks
         return state
 
-    @listen(chunk_references)
-    def generate_rough_outlines(self, state):
+    @listen("chunk_references")
+    def generate_rough_outlines(self, state: SurveyState) -> SurveyState:
         print("\n✏️ Generating rough outlines...\n")
         llm = LLM(model="ollama/qwq")
         agent = Agent(
@@ -76,17 +85,29 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
 
         tasks = []
         for i in range(len(state.abs_chunks)):
-            paper_texts = ''.join(f"---\npaper_title: {t}\n\npaper_content:\n{p}\n" for t, p in zip(state.title_chunks[i], state.abs_chunks[i]))
-            prompt = ROUGH_OUTLINE_PROMPT.replace("[PAPER LIST]", paper_texts).replace("[TOPIC]", state.topic).replace("[SECTION NUM]", "6")
-            tasks.append(Task(description=prompt, agent=agent, expected_output="Outline", output_key=f"outline_{i}"))
+            paper_texts = ''.join(
+                f"---\npaper_title: {t}\n\npaper_content:\n{p}\n"
+                for t, p in zip(state.title_chunks[i], state.abs_chunks[i])
+            )
+            prompt = ROUGH_OUTLINE_PROMPT.replace("[PAPER LIST]", paper_texts)\
+                                        .replace("[TOPIC]", state.topic)\
+                                        .replace("[SECTION NUM]", "6")
+            tasks.append(
+                Task(
+                    description=prompt,
+                    agent=agent,
+                    expected_output="Outline",
+                    output_key=f"outline_{i}"
+                )
+            )
 
         crew = Crew(agents=[agent], tasks=tasks, verbose=True)
         result = crew.kickoff()
         state.rough_outlines = list(result.values())
         return state
 
-    @listen(generate_rough_outlines)
-    def merge_outlines(self, state):
+    @listen("generate_rough_outlines")
+    def merge_outlines(self, state: SurveyState) -> SurveyState:
         print("\n🔀 Merging outlines...\n")
         llm = LLM(model="ollama/qwq")
         agent = Agent(
@@ -97,15 +118,20 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
             verbose=True
         )
         outline_texts = ''.join(f"---\nOutline {i}:\n{o}\n" for i, o in enumerate(state.rough_outlines))
-        prompt = MERGING_OUTLINE_PROMPT.replace("[OUTLINE LIST]", outline_texts).replace("[TOPIC]", state.topic)
-        task = Task(description=prompt, agent=agent, expected_output="Merged outline")
+        prompt = MERGING_OUTLINE_PROMPT.replace("[OUTLINE LIST]", outline_texts)\
+                                      .replace("[TOPIC]", state.topic)
+        task = Task(
+            description=prompt,
+            agent=agent,
+            expected_output="Merged outline"
+        )
         crew = Crew(agents=[agent], tasks=[task], verbose=True)
         result = crew.kickoff()
         state.merged_outline = result.raw
         return state
 
-    @listen(merge_outlines)
-    def finalize_outline(self, state):
+    @listen("merge_outlines")
+    def finalize_outline(self, state: SurveyState) -> SurveyState:
         print("\n🧽 Finalizing and cleaning the outline...\n")
         llm = LLM(model="ollama/qwq")
         agent = Agent(
@@ -116,14 +142,18 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
             verbose=True
         )
         prompt = EDIT_FINAL_OUTLINE_PROMPT.replace("[OVERALL OUTLINE]", state.merged_outline)
-        task = Task(description=prompt, agent=agent, expected_output="Final outline")
+        task = Task(
+            description=prompt,
+            agent=agent,
+            expected_output="Final outline"
+        )
         crew = Crew(agents=[agent], tasks=[task], verbose=True)
         result = crew.kickoff()
         state.final_outline = result.raw
         return state
 
-    @listen(finalize_outline)
-    def save_output(self, state):
+    @listen("finalize_outline")
+    def save_output(self, state: SurveyState) -> str:
         print("\n💾 Saving final outline to output/final_outline.json\n")
         os.makedirs("output", exist_ok=True)
         with open("output/final_outline.json", "w") as f:
@@ -134,14 +164,14 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
         return "Done"
 
 def kickoff():
-    WriteSurveyOutlineFlow().kickoff()
+    flow = WriteSurveyOutlineFlow()
+    flow.run()
     print("\n✅ Outline flow execution complete!")
 
 def plot():
     flow = WriteSurveyOutlineFlow()
-    flow.plot("write_survey_outline_flow.html")
+    flow.plot(file_path="write_survey_outline_flow.html")
     print("Flow plot saved to write_survey_outline_flow.html")
 
 if __name__ == "__main__":
     kickoff()
-  
