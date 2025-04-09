@@ -48,10 +48,9 @@ class WritingOutlineFlow(Flow[WritingState]):
                 "Problem Definition": "Describe the writing task as a problem to solve",
                 "Goals": "List the objectives of the writing task",
                 "Resources": "List available or needed resources",
-                "Rough Plan": "Provide a rough outline or plan for the writing task",
-                "Success Metric": "Define how success will be measured"
+                "Initial Plan": "Provide an intital result of the required task",
+                "Success Metric": "Define how success will be measured for this task"
             }}
-
             Revise your plan 3 times internally and return a polished JSON plan. Ensure the output is a valid JSON string enclosed in ```json ... ``` markers.
             """
         else:
@@ -86,6 +85,7 @@ class WritingOutlineFlow(Flow[WritingState]):
                 name=f"plan_iteration_{i}"
             )
             crew = Crew(agents=[planner], tasks=[task], verbose=True)
+            
             result = crew.kickoff()
             raw_output = result.tasks_output[0].raw.strip()
             # Extract JSON if enclosed in markers

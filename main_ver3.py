@@ -126,7 +126,7 @@ class WritingOutlineFlow(Flow[WritingState]):
 
     @listen("planner_phase")
     def save_output(self, state: WritingState) -> str:
-        print("\n💾 Saving planning results to output/writing_plan.json\n")
+        print("\nSaving planning results to output/writing_plan.json\n")
         os.makedirs("output", exist_ok=True)
         output_file = "output/writing_plan_ver3.json"
         
