@@ -37,11 +37,16 @@ class outlineWriter():
         references_infos = self.db.get_paper_info_from_ids(references_ids)
         references_titles = [r['title'] for r in references_infos]
         references_abs = [r['abs'] for r in references_infos]
-
+        print("len of reference title and reference abs",len(references_titles), len(references_abs))
+        
         abs_chunks, titles_chunks = self.chunking(references_abs, references_titles, chunk_size=chunk_size)
-
-        outlines = self.generate_rough_outlines(topic=topic, papers_chunks=abs_chunks, titles_chunks=titles_chunks, section_num=section_num)
-
+        len(abs_chunks), len(titles_chunks) 
+        print("len of abs_chunks and titles_chunks", len(abs_chunks), len(titles_chunks)) 
+        outlines = self.generate_rough_outlines(
+            topic=topic, papers_chunks=abs_chunks, titles_chunks=titles_chunks, section_num=section_num)
+        print("len of outlines", len(outlines))
+        print("outlines 1 ", outlines[1])
+        print("outlines 2", outlines[2]) 
         section_outline = self.merge_outlines(topic=topic, outlines=outlines)
 
         subsection_outlines = self.generate_subsection_outlines(topic=topic, section_outline=section_outline, rag_num=50)
