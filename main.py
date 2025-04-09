@@ -27,31 +27,42 @@ class SurveyState(BaseModel):
     final_outline: str = ""
 
 class WriteSurveyOutlineFlow(Flow[SurveyState]):
+    '''
+    The flow is designed to:
+
+    Take a research topic as input.
+    Retrieve relevant academic papers from a database.
+    Chunk the retrieved papers into manageable groups.
+    Generate rough outlines for each chunk.
+    Merge these outlines into a cohesive single outline.
+    Refine the merged outline.
+    Save the final result to a JSON file. 
+    
+    '''
     def __init__(self):
         super().__init__(initial_state=SurveyState())
 
     @start()
     def get_topic(self) -> SurveyState:
         print("\n=== Survey Outline Generation Flow ===\n")
-        self.state.topic = input("Enter your research topic: ").strip()
+        self.state.topic = "Explainable AI in Healthcare"  # Example topic 
         return self.state
 
     @listen("get_topic")
     def retrieve_references(self, state: SurveyState) -> SurveyState:
         print("\n📚 Retrieving papers from database...\n")
         db = database(
-            db_path = "/project/hnguyen2/mvu9/datasets/llms/auto_survey/database", 
-            embedding_model = "nomic-ai/nomic-embed-text-v1"
-        )  # Initialize the retrieval DB
-    
-        refs = db.get_paper_info_from_ids(db.get_ids_from_query(state.topic, num=500))
+            db_path="/project/hnguyen2/mvu9/datasets/llms/auto_survey/database", 
+            embedding_model="nomic-ai/nomic-embed-text-v1"
+        )
+        refs = db.get_paper_info_from_ids(db.get_ids_from_query(state.topic, num=50))
         state.abstracts = [r['abs'] for r in refs]
         state.titles = [r['title'] for r in refs]
         return state
 
     @listen("retrieve_references")
     def chunk_references(self, state: SurveyState) -> SurveyState:
-        print("\n🔗 Chunking references...\n")
+        print("\nChunking references...\n")
         token_counter = tokenCounter()
         total_length = token_counter.num_tokens_from_list_string(state.abstracts)
         chunk_size = 14000
@@ -76,7 +87,7 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
 
     @listen("chunk_references")
     def generate_rough_outlines(self, state: SurveyState) -> SurveyState:
-        print("\n✏️ Generating rough outlines...\n")
+        print("\nGenerating rough outlines...\n")
         llm = LLM(model="ollama/qwq")
         agent = Agent(
             role="Outline Planner",
@@ -106,7 +117,14 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
 
         crew = Crew(agents=[agent], tasks=tasks, verbose=True)
         result = crew.kickoff()
-        state.rough_outlines = [result[task.name] for task in tasks]
+        
+        # Modified result extraction
+        if hasattr(result, 'tasks_output'):
+            state.rough_outlines = [task.output.raw for task in result.tasks_output]
+        else:
+            # Fallback in case the structure is different
+            state.rough_outlines = [task.output for task in tasks if task.output]
+        
         return state
 
     @listen("generate_rough_outlines")
@@ -131,12 +149,14 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
         )
         crew = Crew(agents=[agent], tasks=[task], verbose=True)
         result = crew.kickoff()
-        state.merged_outline = result["merge_outlines"]
+        
+        # Modified result extraction
+        state.merged_outline = result.tasks_output[0].raw if result.tasks_output else result.raw
         return state
 
     @listen("merge_outlines")
     def finalize_outline(self, state: SurveyState) -> SurveyState:
-        print("\n🧽 Finalizing and cleaning the outline...\n")
+        print("\nFinalizing and cleaning the outline...\n")
         llm = LLM(model="ollama/qwq")
         agent = Agent(
             role="Survey Editor",
@@ -154,12 +174,14 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
         )
         crew = Crew(agents=[agent], tasks=[task], verbose=True)
         result = crew.kickoff()
-        state.final_outline = result["finalize_outline"]
+        
+        # Modified result extraction
+        state.final_outline = result.tasks_output[0].raw if result.tasks_output else result.raw
         return state
 
     @listen("finalize_outline")
     def save_output(self, state: SurveyState) -> str:
-        print("\n💾 Saving final outline to output/final_outline.json\n")
+        print("\nSaving final outline to output/final_outline.json\n")
         os.makedirs("output", exist_ok=True)
         with open("output/final_outline.json", "w") as f:
             json.dump({
