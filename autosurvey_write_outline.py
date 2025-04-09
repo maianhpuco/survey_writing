@@ -79,7 +79,7 @@ def main(args):
         outline_wo_description
         ) = write_outline(
             args.topic, 
-            args.model, 
+            args.ollama_model, 
             args.section_num, 
             args.outline_reference_num, 
             db, 
