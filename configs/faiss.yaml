@@ -1,0 +1,7 @@
+
+embedding_model: "nomic-ai/nomic-embed-text-v1"
+db_path: " /project/hnguyen2/mvu9/datasets/llms/auto_survey/database"
+title_index_file: "/project/hnguyen2/mvu9/datasets/llms/auto_survey/database/faiss_paper_title_embeddings.bin"
+abs_index_file: "/project/hnguyen2/mvu9/datasets/llms/auto_survey/database/faiss_paper_abs_embeddings.bin"
+id_to_index_file: "/project/hnguyen2/mvu9/datasets/llms/auto_survey/database/arxivid_to_index_abs.json"
+paper_json_file: "/project/hnguyen2/mvu9/datasets/llms/auto_survey/database/arxiv_paper_db.json"
