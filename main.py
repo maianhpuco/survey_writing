@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from crewai import LLM, Agent, Task, Crew
 from crewai.flow.flow import Flow, listen, start
 
-# Assuming these are your custom modules
 from src.database import database
 from src.utils import tokenCounter
 from src.prompt import (
@@ -97,13 +96,13 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
                     description=prompt,
                     agent=agent,
                     expected_output="Outline",
-                    output_key=f"outline_{i}"
+                    name=f"generate_outline_{i}"
                 )
             )
 
         crew = Crew(agents=[agent], tasks=tasks, verbose=True)
         result = crew.kickoff()
-        state.rough_outlines = list(result.values())
+        state.rough_outlines = [result[task.name] for task in tasks]
         return state
 
     @listen("generate_rough_outlines")
@@ -123,11 +122,12 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
         task = Task(
             description=prompt,
             agent=agent,
-            expected_output="Merged outline"
+            expected_output="Merged outline",
+            name="merge_outlines"
         )
         crew = Crew(agents=[agent], tasks=[task], verbose=True)
         result = crew.kickoff()
-        state.merged_outline = result.raw
+        state.merged_outline = result["merge_outlines"]
         return state
 
     @listen("merge_outlines")
@@ -145,11 +145,12 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
         task = Task(
             description=prompt,
             agent=agent,
-            expected_output="Final outline"
+            expected_output="Final outline",
+            name="finalize_outline"
         )
         crew = Crew(agents=[agent], tasks=[task], verbose=True)
         result = crew.kickoff()
-        state.final_outline = result.raw
+        state.final_outline = result["finalize_outline"]
         return state
 
     @listen("finalize_outline")
@@ -165,7 +166,7 @@ class WriteSurveyOutlineFlow(Flow[SurveyState]):
 
 def kickoff():
     flow = WriteSurveyOutlineFlow()
-    flow.run()
+    flow.kickoff()
     print("\n✅ Outline flow execution complete!")
 
 def plot():
